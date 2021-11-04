@@ -10,8 +10,8 @@ const vonage = new Vonage({ apiKey, apiSecret });
 
 puppeteerExtra.use(pluginStealth());
 
-cron.schedule('*/30 * * * * *', async () => {
-  console.log('Running PS5 stock check every 30 seconds...');
+cron.schedule('0 */1 * * * *', async () => {
+  console.log('Running PS5 stock check every minute...');
   const [inStockAnywhere, inStockStoreKeys] = await getAllStoresWithStock();
   if (inStockAnywhere) {
     const text = generateText(inStockStoreKeys);
@@ -24,13 +24,13 @@ cron.schedule('0 0 */3 * * *', async () => {
   console.log(
     'Running tests to make sure in stock pages are working every 3 hours...'
   );
-  const [, testInStockKeys] = getAllStoresWithStock({ testing: true });
+  const [, testInStockKeys] = await getAllStoresWithStock({ testing: true });
   if (testInStockKeys.length === Object.keys(stores)) {
     console.log('✅ In stock test pages appear to be working');
   } else {
-    const text = `❌ There is a problem with the in stock test pages. Test pages showing in stock are ${testInStockKeys.join(
+    const text = `There is a problem with the in stock test pages. Test pages showing in stock are ${testInStockKeys.join(
       ', '
-    )}`;
+    )}\n`;
     console.log(text);
     sendText(text);
   }
