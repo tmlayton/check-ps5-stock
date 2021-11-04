@@ -7,23 +7,34 @@ const pluginStealth = require('puppeteer-extra-plugin-stealth');
 const { apiKey, apiSecret, stores, from, to } = require('./data.json');
 
 const vonage = new Vonage({ apiKey, apiSecret });
-
 puppeteerExtra.use(pluginStealth());
 
-cron.schedule('0 */1 * * * *', async () => {
-  console.log('Running PS5 stock check every minute...');
+scheduleJobs();
+
+function scheduleJobs() {
+  cron.schedule('0 */1 * * * *', async () => {
+    console.log('Running PS5 stock check every minute...');
+    await checkStock();
+  });
+
+  cron.schedule('0 0 */1 * * *', async () => {
+    console.log(
+      'Running tests every hour to make sure in stock pages are working...'
+    );
+    await runTests();
+  });
+}
+
+async function checkStock() {
   const [inStockAnywhere, inStockStoreKeys] = await getAllStoresWithStock();
   if (inStockAnywhere) {
     const text = generateText(inStockStoreKeys);
     console.log(text);
     sendText(text);
   }
-});
+}
 
-cron.schedule('0 0 */1 * * *', async () => {
-  console.log(
-    'Running tests every hour to make sure in stock pages are working...'
-  );
+async function runTests() {
   const [, testInStockKeys] = await getAllStoresWithStock({ testing: true });
   if (testInStockKeys.length === Object.keys(stores).length) {
     console.log('✅ In stock test pages appear to be working');
@@ -33,8 +44,9 @@ cron.schedule('0 0 */1 * * *', async () => {
     )}\n`;
     console.log(text);
     sendText(text);
+    manuallyCheckTestPages();
   }
-});
+}
 
 function generateText(storeKeys) {
   let text = '';
@@ -100,6 +112,16 @@ function sendText(text) {
       }
     }
   });
+}
+
+async function manuallyCheckTestPages() {
+  const keys = Object.keys(stores);
+  for (let i = 0; i < keys.length; i++) {
+    const url = stores[keys[i]].testInStock;
+    const browser = await puppeteerExtra.launch({ headless: false });
+    const page = await browser.newPage();
+    await page.goto(url);
+  }
 }
 
 app.listen(6969, () => {
