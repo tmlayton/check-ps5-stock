@@ -20,12 +20,12 @@ cron.schedule('0 */1 * * * *', async () => {
   }
 });
 
-cron.schedule('0 0 */12 * * *', async () => {
+cron.schedule('0 0 */1 * * *', async () => {
   console.log(
-    'Running tests to make sure in stock pages are working every 3 hours...'
+    'Running tests every hour to make sure in stock pages are working...'
   );
   const [, testInStockKeys] = await getAllStoresWithStock({ testing: true });
-  if (testInStockKeys.length === Object.keys(stores)) {
+  if (testInStockKeys.length === Object.keys(stores).length) {
     console.log('✅ In stock test pages appear to be working');
   } else {
     const text = `There is a problem with the in stock test pages. Test pages showing in stock are ${testInStockKeys.join(
