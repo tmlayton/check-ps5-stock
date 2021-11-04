@@ -1,0 +1,16 @@
+{
+  "name": "check-ps5-stock",
+  "version": "1.0.0",
+  "description": "Check PS5 stock",
+  "main": "index.js",
+  "author": "Tim Layton",
+  "license": "MIT",
+  "dependencies": {
+    "@vonage/server-sdk": "^2.10.10",
+    "express": "^4.17.1",
+    "node-cron": "^2.0.3",
+    "puppeteer": "^11.0.0",
+    "puppeteer-extra": "^3.2.3",
+    "puppeteer-extra-plugin-stealth": "^2.9.0"
+  }
+}

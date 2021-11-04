@@ -1,0 +1,107 @@
+const express = require('express');
+const app = express();
+const cron = require('node-cron');
+const Vonage = require('@vonage/server-sdk');
+const puppeteerExtra = require('puppeteer-extra');
+const pluginStealth = require('puppeteer-extra-plugin-stealth');
+const { apiKey, apiSecret, stores, from, to } = require('./data.json');
+
+const vonage = new Vonage({ apiKey, apiSecret });
+
+puppeteerExtra.use(pluginStealth());
+
+cron.schedule('*/30 * * * * *', async () => {
+  console.log('Running PS5 stock check every 30 seconds...');
+  const [inStockAnywhere, inStockStoreKeys] = await getAllStoresWithStock();
+  if (inStockAnywhere) {
+    const text = generateText(inStockStoreKeys);
+    console.log(text);
+    sendText(text);
+  }
+});
+
+cron.schedule('0 0 */3 * * *', async () => {
+  console.log(
+    'Running tests to make sure in stock pages are working every 3 hours...'
+  );
+  const [, testInStockKeys] = getAllStoresWithStock({ testing: true });
+  if (testInStockKeys.length === Object.keys(stores)) {
+    console.log('✅ In stock test pages appear to be working');
+  } else {
+    const text = `❌ There is a problem with the in stock test pages. Test pages showing in stock are ${testInStockKeys.join(
+      ', '
+    )}`;
+    console.log(text);
+    sendText(text);
+  }
+});
+
+function generateText(storeKeys) {
+  let text = '';
+  storeKeys.forEach((key) => {
+    text += `In stock at ${key}: ${stores[key].url}\n`;
+  });
+  return text;
+}
+
+async function getAllStoresWithStock(options = {}) {
+  const { testing = false } = options;
+  const inStockStoreKeys = [];
+  const storeKeys = Object.keys(stores);
+
+  for (let i = 0; i < storeKeys.length; i++) {
+    const key = storeKeys[i];
+    const { url, selector, testInStock } = stores[key];
+    const inStock = await inStockAt(testing ? testInStock : url, selector, key);
+    if (inStock) {
+      inStockStoreKeys.push(key);
+    }
+  }
+
+  const inStockAnywhere = inStockStoreKeys.length > 0;
+
+  return [inStockAnywhere, inStockStoreKeys];
+}
+
+async function inStockAt(url, selector, key) {
+  let html = null;
+  const browser = await puppeteerExtra.launch({ headless: true });
+  const page = await browser.newPage();
+  await page.goto(url);
+  const results = await page.$(selector);
+
+  if (results != null) {
+    html = await results.evaluate((element) =>
+      element ? element.innerHTML : null
+    );
+  }
+
+  if (html === null) {
+    console.log(`❌ Not in stock at ${key}`);
+  } else {
+    console.log(`✅ In stock at ${key}`);
+  }
+
+  await browser.close();
+  return html !== null;
+}
+
+function sendText(text) {
+  vonage.message.sendSms(from, to, text, (err, responseData) => {
+    if (err) {
+      console.log(err);
+    } else {
+      if (responseData.messages[0]['status'] === '0') {
+        console.log('Message sent successfully.');
+      } else {
+        console.log(
+          `Message failed with error: ${responseData.messages[0]['error-text']}`
+        );
+      }
+    }
+  });
+}
+
+app.listen(6969, () => {
+  console.log('Server started at port 6969');
+});
