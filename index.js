@@ -39,7 +39,7 @@ cron.schedule('0 0 */12 * * *', async () => {
 function generateText(storeKeys) {
   let text = '';
   storeKeys.forEach((key) => {
-    text += `In stock at ${key}: ${stores[key].url}\n`;
+    text += `In stock at ${key}: ${stores[key].url} \n`;
   });
   return text;
 }
