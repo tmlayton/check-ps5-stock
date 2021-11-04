@@ -20,7 +20,7 @@ cron.schedule('0 */1 * * * *', async () => {
   }
 });
 
-cron.schedule('0 0 */3 * * *', async () => {
+cron.schedule('0 0 */12 * * *', async () => {
   console.log(
     'Running tests to make sure in stock pages are working every 3 hours...'
   );
