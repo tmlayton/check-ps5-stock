@@ -41,7 +41,7 @@ async function runTests() {
   } else {
     const text = `There is a problem with the in stock test pages. Test pages showing in stock are ${testInStockKeys.join(
       ', '
-    )}\n`;
+    )} \n`;
     console.log(text);
     sendText(text);
     manuallyCheckTestPages();
