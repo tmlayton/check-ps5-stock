@@ -1,11 +1,13 @@
-const express = require('express');
-const app = express();
-const cron = require('node-cron');
-const Vonage = require('@vonage/server-sdk');
-const puppeteerExtra = require('puppeteer-extra');
-const pluginStealth = require('puppeteer-extra-plugin-stealth');
-const { apiKey, apiSecret, stores, from, to } = require('./data.json');
+import express from 'express';
+import cron from 'node-cron';
+import Vonage from '@vonage/server-sdk';
+import puppeteerExtra from 'puppeteer-extra';
+import pluginStealth from 'puppeteer-extra-plugin-stealth';
+import { apiKey, apiSecret, stores, from, to } from './data.json';
 
+type StoreKey = keyof typeof stores;
+
+const app = express();
 const vonage = new Vonage({ apiKey, apiSecret });
 puppeteerExtra.use(pluginStealth());
 
@@ -13,14 +15,12 @@ scheduleJobs();
 
 function scheduleJobs() {
   cron.schedule('0 */1 * * * *', async () => {
-    console.log('Running PS5 stock check every minute...');
+    log('Running PS5 stock check every minute...');
     await checkStock();
   });
 
   cron.schedule('0 0 */1 * * *', async () => {
-    console.log(
-      'Running tests every hour to make sure in stock pages are working...'
-    );
+    log('Running tests every hour to make sure in stock pages are working...');
     await runTests();
   });
 }
@@ -29,7 +29,7 @@ async function checkStock() {
   const [inStockAnywhere, inStockStoreKeys] = await getAllStoresWithStock();
   if (inStockAnywhere) {
     const text = generateText(inStockStoreKeys);
-    console.log(text);
+    log(text);
     sendText(text);
   }
 }
@@ -37,18 +37,18 @@ async function checkStock() {
 async function runTests() {
   const [, testInStockKeys] = await getAllStoresWithStock({ testing: true });
   if (testInStockKeys.length === Object.keys(stores).length) {
-    console.log('✅ In stock test pages appear to be working');
+    log('✅ In stock test pages appear to be working');
   } else {
     const text = `There is a problem with the in stock test pages. Test pages showing in stock are ${testInStockKeys.join(
       ', '
     )} \n`;
-    console.log(text);
+    log(text);
     sendText(text);
     manuallyCheckTestPages();
   }
 }
 
-function generateText(storeKeys) {
+function generateText(storeKeys: StoreKey[]) {
   let text = '';
   storeKeys.forEach((key) => {
     text += `In stock at ${key}: ${stores[key].url} \n`;
@@ -56,10 +56,12 @@ function generateText(storeKeys) {
   return text;
 }
 
-async function getAllStoresWithStock(options = {}) {
+async function getAllStoresWithStock(
+  options: { testing?: boolean } = {}
+): Promise<[boolean, StoreKey[]]> {
   const { testing = false } = options;
-  const inStockStoreKeys = [];
-  const storeKeys = Object.keys(stores);
+  const inStockStoreKeys: StoreKey[] = [];
+  const storeKeys = Object.keys(stores) as StoreKey[];
 
   for (let i = 0; i < storeKeys.length; i++) {
     const key = storeKeys[i];
@@ -75,7 +77,7 @@ async function getAllStoresWithStock(options = {}) {
   return [inStockAnywhere, inStockStoreKeys];
 }
 
-async function inStockAt(url, selector, key) {
+async function inStockAt(url: string, selector: string, key: StoreKey) {
   let html = null;
   const browser = await puppeteerExtra.launch({ headless: true });
   const page = await browser.newPage();
@@ -89,24 +91,24 @@ async function inStockAt(url, selector, key) {
   }
 
   if (html === null) {
-    console.log(`❌ Not in stock at ${key}`);
+    log(`❌ Not in stock at ${key}`);
   } else {
-    console.log(`✅ In stock at ${key}`);
+    log(`✅ In stock at ${key}`);
   }
 
   await browser.close();
   return html !== null;
 }
 
-function sendText(text) {
-  vonage.message.sendSms(from, to, text, (err, responseData) => {
+function sendText(text: string) {
+  vonage.message.sendSms(from, to, text, {}, (err, responseData) => {
     if (err) {
-      console.log(err);
+      log(err);
     } else {
       if (responseData.messages[0]['status'] === '0') {
-        console.log('Message sent successfully.');
+        log('Message sent successfully.');
       } else {
-        console.log(
+        log(
           `Message failed with error: ${responseData.messages[0]['error-text']}`
         );
       }
@@ -115,7 +117,7 @@ function sendText(text) {
 }
 
 async function manuallyCheckTestPages() {
-  const keys = Object.keys(stores);
+  const keys = Object.keys(stores) as StoreKey[];
   for (let i = 0; i < keys.length; i++) {
     const url = stores[keys[i]].testInStock;
     const browser = await puppeteerExtra.launch({ headless: false });
@@ -124,6 +126,11 @@ async function manuallyCheckTestPages() {
   }
 }
 
+function log(message: any) {
+  const localTime = new Date().toLocaleString();
+  console.log(`[${localTime}] ${message}`);
+}
+
 app.listen(6969, () => {
-  console.log('Server started at port 6969');
+  log('Server started at port 6969');
 });
