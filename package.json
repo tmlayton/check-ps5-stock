@@ -8,7 +8,6 @@
   "dependencies": {
     "@vonage/server-sdk": "^2.10.10",
     "express": "^4.17.1",
-    "forever": "^4.0.1",
     "node-cron": "^2.0.3",
     "puppeteer": "^11.0.0",
     "puppeteer-extra": "^3.2.3",
@@ -20,7 +19,10 @@
     "typescript": "^4.4.4"
   },
   "scripts": {
-    "preserver": "tsc",
-    "server": "forever start -l $PWD/log -a dist/index.js"
+    "build": "yarn run tsc",
+    "preforever": "yarn run build",
+    "forever": "forever start -l $PWD/log -a dist/index.js",
+    "preserver": "yarn run build",
+    "server": "node dist/index.js"
   }
 }
