@@ -1,40 +1,23 @@
-import express from 'express';
-import cron from 'node-cron';
 import Vonage from '@vonage/server-sdk';
 import puppeteerExtra from 'puppeteer-extra';
 import pluginStealth from 'puppeteer-extra-plugin-stealth';
-import { apiKey, apiSecret, stores, from, to } from './data.json';
+import { apiKey, apiSecret, stores, from, to } from '../data.json';
 
 type StoreKey = keyof typeof stores;
 
-const app = express();
 const vonage = new Vonage({ apiKey, apiSecret });
 puppeteerExtra.use(pluginStealth());
 
-scheduleJobs();
-
-function scheduleJobs() {
-  cron.schedule('0 */1 * * * *', async () => {
-    log('Running PS5 stock check every minute...');
-    await checkStock();
-  });
-
-  cron.schedule('0 0 */1 * * *', async () => {
-    log('Running tests every hour to make sure in stock pages are working...');
-    await runTests();
-  });
-}
-
-async function checkStock() {
+export async function checkStock(textOnFail = true) {
   const [inStockAnywhere, inStockStoreKeys] = await getAllStoresWithStock();
   if (inStockAnywhere) {
     const text = generateText(inStockStoreKeys);
     log(text);
-    sendText(text);
+    if (textOnFail) sendText(text);
   }
 }
 
-async function runTests() {
+export async function runTests(textOnFail = true) {
   const [, testInStockKeys] = await getAllStoresWithStock({ testing: true });
   if (testInStockKeys.length === Object.keys(stores).length) {
     log('✅ In stock test pages appear to be working');
@@ -43,7 +26,7 @@ async function runTests() {
       ', '
     )} \n`;
     log(text);
-    sendText(text);
+    if (textOnFail) sendText(text);
     manuallyCheckTestPages();
   }
 }
@@ -51,7 +34,7 @@ async function runTests() {
 function generateText(storeKeys: StoreKey[]) {
   let text = '';
   storeKeys.forEach((key) => {
-    text += `In stock at ${key}: ${stores[key].url} \n`;
+    text += `In stock at ${key}: ${stores[key].url} Buy it now!\n`;
   });
   return text;
 }
@@ -126,11 +109,7 @@ async function manuallyCheckTestPages() {
   }
 }
 
-function log(message: any) {
+export function log(message: any) {
   const localTime = new Date().toLocaleString();
   console.log(`[${localTime}] ${message}`);
 }
-
-app.listen(6969, () => {
-  log('Server started at port 6969');
-});

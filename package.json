@@ -23,6 +23,10 @@
     "preforever": "yarn run build",
     "forever": "forever start -l $PWD/log -a dist/index.js",
     "preserver": "yarn run build",
-    "server": "node dist/index.js"
+    "server": "node dist/index.js",
+    "pretest": "yarn run build",
+    "test": "node dist/src/test.js",
+    "prestock": "yarn run build",
+    "stock": "node dist/src/stock.js"
   }
 }
